@@ -1,47 +1,43 @@
 name: CI with Caching
 
-# Trigger the workflow on push to the main branch
 on:
   push:
-    branches:
-      - "main"
-  workflow_dispatch: # Allows manual triggering from the Actions tab
+    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build-with-cache:
-    runs-on: ubuntu-latest  # The job will run on an Ubuntu runner
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code
+      # Checkout the repository code
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Step 2: Set up the Python environment (or whatever environment you're using)
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
+      # Set up 'uv' (or any other necessary setup)
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+      
+      # Create a virtual environment
+      - name: Create virtual environment
+        run: uv venv
 
-      # Step 3: Cache Python dependencies
-      - name: Cache Python dependencies
+      # Cache step - caching dependencies using actions/cache
+      - name: Cache uv dependencies
         uses: actions/cache@v4
-        id: cache-python-deps  # Giving the step an ID for reference
+        id: cache-uv
         with:
-          path: ~/.cache/pip  # Path where pip stores installed dependencies
-          key: cache-ac39293-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}  # Cache key with OS and file hash for uniqueness
-          restore-keys: |
-            cache-ac39293-${{ runner.os }}-
+          path: ~/.cache/uv    # The path to be cached
+          key: cache-ac39293   # Cache key (use a consistent key for the cache)
 
-      # Step 4: Install dependencies
+      # Install dependencies after the cache
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+        run: uv pip install -r requirements.txt
 
-      # Step 5: Prime the cache and echo whether the cache was hit or miss
-      - name: Prime cache-ac39293
+      # Prime Cache step - checks the cache hit/miss and echoes a message
+      - name: prime-cache-ac39293
         run: |
-          if [[ "${{ steps.cache-python-deps.outputs.cache-hit }}" == "true" ]]; then
+          if [[ "${{ steps.cache-uv.outputs.cache-hit }}" == "true" ]]; then
             echo "Cache hit! Dependencies were restored."
           else
             echo "Cache miss. Dependencies were installed and cache will be saved."
